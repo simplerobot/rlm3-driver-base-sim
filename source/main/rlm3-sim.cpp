@@ -79,5 +79,6 @@ TEST_SETUP(SIMULATOR_INITIALIZATION)
 
 TEST_FINISH(SIMULATOR_VALIDATE)
 {
-	ASSERT(g_sim_interrupt_queue.empty());
+	if (!g_sim_interrupt_queue.empty())
+		FAIL("Simulator did not use all interrupt events.");
 }
