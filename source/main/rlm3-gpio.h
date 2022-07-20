@@ -253,6 +253,8 @@ extern GPIO_Mode SIM_GPIO_GetMode(GPIO_Port port, uint32_t pin);
 extern GPIO_Pull SIM_GPIO_GetPull(GPIO_Port port, uint32_t pin);
 extern GPIO_Speed SIM_GPIO_GetSpeed(GPIO_Port port, uint32_t pin);
 extern GPIO_AlternateFunction SIM_GPIO_GetAlt(GPIO_Port port, uint32_t pin);
+extern void SIM_GPIO_Write(GPIO_Port port, uint32_t pin, bool value);
+extern bool SIM_GPIO_Read(GPIO_Port port, uint32_t pin);
 
 
 #ifdef __cplusplus
