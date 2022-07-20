@@ -24,35 +24,54 @@ struct GPIO_Port_State
 static GPIO_Port_State g_port_states[GPIO_COUNT];
 
 
-void GPIO_CLOCK_ENABLE(GPIO_Port port)
+static void ValidatePort(GPIO_Port port)
 {
 	ASSERT(port < GPIO_COUNT);
+}
+
+static void ValidatePins(GPIO_Port port, uint32_t pins)
+{
+	ValidatePort(port);
+	ASSERT(pins != 0);
+	ASSERT((pins & ~0xFFFF) == 0);
+}
+
+static void ValidatePin(GPIO_Port port, uint32_t pin)
+{
+	ValidatePins(port, pin);
+	ASSERT(__builtin_popcount(pin) == 1);
+}
+
+static void ValidateInit(GPIO_InitTypeDef* init)
+{
+	ASSERT(init != nullptr);
+	// We currently only support digital input and output pins.  NOT alternate functions.
+	ASSERT(init->Mode == GPIO_MODE_INPUT || init->Mode == GPIO_MODE_OUTPUT_PP || init->Mode == GPIO_MODE_OUTPUT_OD);
+
+	ASSERT(init->Pull == GPIO_NOPULL || init->Pull == GPIO_PULLUP || init->Pull == GPIO_PULLDOWN);
+	ASSERT(init->Speed == GPIO_SPEED_FREQ_LOW || init->Speed == GPIO_SPEED_FREQ_MEDIUM || init->Speed == GPIO_SPEED_FREQ_HIGH || init->Speed == GPIO_SPEED_FREQ_VERY_HIGH);
+	ASSERT(init->Alternate == GPIO_AF_DISABLED);
+}
+
+
+extern void GPIO_CLOCK_ENABLE(GPIO_Port port)
+{
+	ValidatePort(port);
+	ASSERT(!g_port_states[port].clock_enabled);
 	g_port_states[port].clock_enabled = true;
 }
 
-void GPIO_CLOCK_DISABLE(GPIO_Port port)
+extern void GPIO_CLOCK_DISABLE(GPIO_Port port)
 {
-	ASSERT(port < GPIO_COUNT);
+	ValidatePort(port);
+	ASSERT(g_port_states[port].clock_enabled);
 	g_port_states[port].clock_enabled = false;
 }
 
 extern void HAL_GPIO_Init(GPIO_Port port, GPIO_InitTypeDef* init)
 {
-	ASSERT(port < GPIO_COUNT);
-	ASSERT(init != nullptr);
-
-	// Validate we only are setting valid pins.
-	ASSERT(init->Pin != 0);
-	ASSERT((init->Pin & ~0xFFFF) == 0);
-
-	// We currently only support digital input and output pins.  NOT alternate functions.
-	ASSERT(init->Mode == GPIO_MODE_INPUT || init->Mode == GPIO_MODE_OUTPUT_PP || init->Mode == GPIO_MODE_OUTPUT_OD);
-
-	ASSERT(init->Pull == GPIO_NOPULL || init->Pull == GPIO_PULLUP || init->Pull == GPIO_PULLDOWN);
-
-	ASSERT(init->Speed == GPIO_SPEED_FREQ_LOW || init->Speed == GPIO_SPEED_FREQ_MEDIUM || init->Speed == GPIO_SPEED_FREQ_HIGH || init->Speed == GPIO_SPEED_FREQ_VERY_HIGH);
-
-	ASSERT(init->Alternate == GPIO_AF_UNINITIALIZED);
+	ValidateInit(init);
+	ValidatePins(port, init->Pin);
 
 	GPIO_Port_State& port_state = g_port_states[port];
 
@@ -86,11 +105,7 @@ extern void HAL_GPIO_Init(GPIO_Port port, GPIO_InitTypeDef* init)
 
 extern void HAL_GPIO_DeInit(GPIO_Port port, uint32_t pin)
 {
-	ASSERT(port < GPIO_COUNT);
-
-	// Validate we only are updating valid pins.
-	ASSERT(pin != 0);
-	ASSERT((pin & ~0xFFFF) == 0);
+	ValidatePins(port, pin);
 
 	// Make sure these pins are actually enabled.
 	GPIO_Port_State& port_state = g_port_states[port];
@@ -101,22 +116,29 @@ extern void HAL_GPIO_DeInit(GPIO_Port port, uint32_t pin)
 	port_state.enabled_pins &= ~pin;
 	port_state.output_pins &= ~pin;
 	port_state.input_pins &= ~pin;
+
+	// Reset the pin state.
+	for (size_t pin_index = 0; pin_index < 16; pin_index++)
+	{
+		if ((pin & (1 << pin_index)) != 0)
+		{
+			GPIO_Pin_Config& pin_state = port_state.pin_configs[pin_index];
+			pin_state.mode = GPIO_MODE_DISABLED;
+			pin_state.pull = GPIO_PULL_DISABLED;
+			pin_state.speed = GPIO_SPEED_DISABLED;
+			pin_state.alternate = GPIO_AF_DISABLED;
+		}
+	}
 }
 
 extern GPIO_PinState HAL_GPIO_ReadPin(GPIO_Port port, uint32_t pin)
 {
-	ASSERT(port < GPIO_COUNT);
-
-	// Validate we only are reading a valid pin.
-	ASSERT(pin != 0);
-	ASSERT((pin & ~0xFFFF) == 0);
-	ASSERT(__builtin_popcount(pin) == 1);
+	ValidatePin(port, pin);
 
 	// Make sure this pin is actually enabled for input.
 	GPIO_Port_State& port_state = g_port_states[port];
 	ASSERT(port_state.clock_enabled == true);
 	ASSERT((pin & ~port_state.enabled_pins) == 0);
-	ASSERT((pin & ~port_state.input_pins) == 0);
 
 	if ((pin & port_state.pin_values) != 0)
 		return GPIO_PIN_SET;
@@ -126,21 +148,98 @@ extern GPIO_PinState HAL_GPIO_ReadPin(GPIO_Port port, uint32_t pin)
 
 void HAL_GPIO_WritePin(GPIO_Port port, uint32_t pin, GPIO_PinState state)
 {
-	ASSERT(port < GPIO_COUNT);
+	ValidatePins(port, pin);
 	ASSERT(state == GPIO_PIN_SET || state == GPIO_PIN_RESET);
 
-	// Validate we only are writing valid pins.
-	ASSERT(pin != 0);
-	ASSERT((pin & ~0xFFFF) == 0);
-
-	// We actually can write to a pin before it has been enabled, but I can't think of a valid use case of writing to an input pin.
+	// Make sure this pin is actually enabled for output.
 	GPIO_Port_State& port_state = g_port_states[port];
-	ASSERT((pin & port_state.input_pins) == 0);
+	ASSERT(port_state.clock_enabled == true);
+	ASSERT((pin & ~port_state.enabled_pins) == 0);
 
 	if (state == GPIO_PIN_SET)
 		port_state.pin_values |= pin;
 	else
 		port_state.pin_values &= ~pin;
+}
+
+extern bool SIM_GPIO_IsClockEnabled(GPIO_Port port)
+{
+	ValidatePort(port);
+	GPIO_Port_State& port_state = g_port_states[port];
+	return port_state.clock_enabled;
+}
+
+extern bool SIM_GPIO_IsEnabled(GPIO_Port port, uint32_t pin)
+{
+	ValidatePin(port, pin);
+	GPIO_Port_State& port_state = g_port_states[port];
+	if (!port_state.clock_enabled)
+		return false;
+	return (port_state.enabled_pins & pin) != 0;
+}
+
+extern GPIO_Mode SIM_GPIO_GetMode(GPIO_Port port, uint32_t pin)
+{
+	ValidatePin(port, pin);
+	GPIO_Port_State& port_state = g_port_states[port];
+	if (port_state.clock_enabled)
+		for (size_t pin_index = 0; pin_index < 16; pin_index++)
+			if ((pin & (1 << pin_index)) != 0)
+				return port_state.pin_configs[pin_index].mode;
+	return GPIO_MODE_DISABLED;
+
+}
+
+extern GPIO_Pull SIM_GPIO_GetPull(GPIO_Port port, uint32_t pin)
+{
+	ValidatePin(port, pin);
+	GPIO_Port_State& port_state = g_port_states[port];
+	if (port_state.clock_enabled)
+		for (size_t pin_index = 0; pin_index < 16; pin_index++)
+			if ((pin & (1 << pin_index)) != 0)
+				return port_state.pin_configs[pin_index].pull;
+	return GPIO_PULL_DISABLED;
+}
+
+extern GPIO_Speed SIM_GPIO_GetSpeed(GPIO_Port port, uint32_t pin)
+{
+	ValidatePin(port, pin);
+	GPIO_Port_State& port_state = g_port_states[port];
+	if (port_state.clock_enabled)
+		for (size_t pin_index = 0; pin_index < 16; pin_index++)
+			if ((pin & (1 << pin_index)) != 0)
+				return port_state.pin_configs[pin_index].speed;
+	return GPIO_SPEED_DISABLED;
+}
+
+extern GPIO_AlternateFunction SIM_GPIO_GetAlt(GPIO_Port port, uint32_t pin)
+{
+	ValidatePin(port, pin);
+	GPIO_Port_State& port_state = g_port_states[port];
+	if (port_state.clock_enabled)
+		for (size_t pin_index = 0; pin_index < 16; pin_index++)
+			if ((pin & (1 << pin_index)) != 0)
+				return port_state.pin_configs[pin_index].alternate;
+	return GPIO_AF_DISABLED;
+}
+
+TEST_SETUP(SIM_GPIO_INIT)
+{
+	for (auto& port : g_port_states)
+	{
+		port.clock_enabled = false;
+		port.enabled_pins = 0;
+		port.output_pins = 0;
+		port.input_pins = 0;
+		port.pin_values = 0;
+		for (auto& pin : port.pin_configs)
+		{
+			pin.mode = GPIO_MODE_DISABLED;
+			pin.pull = GPIO_PULL_DISABLED;
+			pin.speed = GPIO_SPEED_DISABLED;
+			pin.alternate = GPIO_AF_DISABLED;
+		}
+	}
 }
 
 const char* ToString(GPIO_Port port)
@@ -166,7 +265,7 @@ const char* ToString(GPIO_Mode mode)
 {
 	switch (mode)
 	{
-	case GPIO_MODE_UNINITIALIZED:	return "GPIO_MODE_UNINITIALIZED";
+	case GPIO_MODE_DISABLED:	return "GPIO_MODE_UNINITIALIZED";
 	case GPIO_MODE_INPUT:	return "GPIO_MODE_INPUT";
 	case GPIO_MODE_OUTPUT_PP:	return "GPIO_MODE_OUTPUT_PP";
 	case GPIO_MODE_OUTPUT_OD:	return "GPIO_MODE_OUTPUT_OD";
@@ -187,7 +286,7 @@ const char* ToString(GPIO_Pull pull)
 {
 	switch (pull)
 	{
-	case GPIO_PULL_UNINITIALIZED:	return "GPIO_PULL_UNINITIALIZED";
+	case GPIO_PULL_DISABLED:	return "GPIO_PULL_UNINITIALIZED";
 	case GPIO_NOPULL:	return "GPIO_NOPULL";
 	case GPIO_PULLUP:	return "GPIO_PULLUP";
 	case GPIO_PULLDOWN:	return "GPIO_PULLDOWN";
@@ -199,7 +298,7 @@ const char* ToString(GPIO_Speed speed)
 {
 	switch (speed)
 	{
-	case GPIO_SPEED_UNINITIALIZED:	return "GPIO_SPEED_UNINITIALIZED";
+	case GPIO_SPEED_DISABLED:	return "GPIO_SPEED_UNINITIALIZED";
 	case GPIO_SPEED_FREQ_LOW:	return "GPIO_SPEED_FREQ_LOW";
 	case GPIO_SPEED_FREQ_MEDIUM:	return "GPIO_SPEED_FREQ_MEDIUM";
 	case GPIO_SPEED_FREQ_HIGH:	return "GPIO_SPEED_FREQ_HIGH";
@@ -212,7 +311,7 @@ const char* ToString(GPIO_AlternateFunction alternate)
 {
 	switch (alternate)
 	{
-	case GPIO_AF_UNINITIALIZED:	return "GPIO_AF_UNINITIALIZED";
+	case GPIO_AF_DISABLED:	return "GPIO_AF_UNINITIALIZED";
 	case GPIO_AF0_RTC_50Hz:	return "GPIO_AF0_RTC_50Hz";
 	case GPIO_AF0_MCO:	return "GPIO_AF0_MCO";
 	case GPIO_AF0_TAMPER:	return "GPIO_AF0_TAMPER";

@@ -116,7 +116,7 @@ typedef enum
 
 typedef enum
 {
-	GPIO_MODE_UNINITIALIZED,
+	GPIO_MODE_DISABLED,
 	GPIO_MODE_INPUT,
 	GPIO_MODE_OUTPUT_PP,
 	GPIO_MODE_OUTPUT_OD,
@@ -133,7 +133,7 @@ typedef enum
 
 typedef enum
 {
-	GPIO_PULL_UNINITIALIZED,
+	GPIO_PULL_DISABLED,
 	GPIO_NOPULL,
 	GPIO_PULLUP,
 	GPIO_PULLDOWN,
@@ -141,7 +141,7 @@ typedef enum
 
 typedef enum
 {
-	GPIO_SPEED_UNINITIALIZED,
+	GPIO_SPEED_DISABLED,
 	GPIO_SPEED_FREQ_LOW,
 	GPIO_SPEED_FREQ_MEDIUM,
 	GPIO_SPEED_FREQ_HIGH,
@@ -150,7 +150,7 @@ typedef enum
 
 typedef enum
 {
-	GPIO_AF_UNINITIALIZED,
+	GPIO_AF_DISABLED,
 	GPIO_AF0_RTC_50Hz,
 	GPIO_AF0_MCO,
 	GPIO_AF0_TAMPER,
@@ -217,10 +217,10 @@ typedef enum
 extern void HAL_GPIO_Init(GPIO_Port port, GPIO_InitTypeDef* init);
 extern void HAL_GPIO_DeInit(GPIO_Port port, uint32_t pin);
 extern GPIO_PinState HAL_GPIO_ReadPin(GPIO_Port port, uint32_t pin);
-void HAL_GPIO_WritePin(GPIO_Port port, uint32_t pin, GPIO_PinState state);
+extern void HAL_GPIO_WritePin(GPIO_Port port, uint32_t pin, GPIO_PinState state);
 
-void GPIO_CLOCK_ENABLE(GPIO_Port port);
-void GPIO_CLOCK_DISABLE(GPIO_Port port);
+extern void GPIO_CLOCK_ENABLE(GPIO_Port port);
+extern void GPIO_CLOCK_DISABLE(GPIO_Port port);
 
 #define __HAL_RCC_GPIOA_CLK_ENABLE() GPIO_CLOCK_ENABLE(GPIOA)
 #define __HAL_RCC_GPIOB_CLK_ENABLE() GPIO_CLOCK_ENABLE(GPIOB)
@@ -245,6 +245,14 @@ void GPIO_CLOCK_DISABLE(GPIO_Port port);
 #define __HAL_RCC_GPIOI_CLK_DISABLE() GPIO_CLOCK_DISABLE(GPIOI)
 #define __HAL_RCC_GPIOJ_CLK_DISABLE() GPIO_CLOCK_DISABLE(GPIOJ)
 #define __HAL_RCC_GPIOK_CLK_DISABLE() GPIO_CLOCK_DISABLE(GPIOK)
+
+
+extern bool SIM_GPIO_IsClockEnabled(GPIO_Port port);
+extern bool SIM_GPIO_IsEnabled(GPIO_Port port, uint32_t pin);
+extern GPIO_Mode SIM_GPIO_GetMode(GPIO_Port port, uint32_t pin);
+extern GPIO_Pull SIM_GPIO_GetPull(GPIO_Port port, uint32_t pin);
+extern GPIO_Speed SIM_GPIO_GetSpeed(GPIO_Port port, uint32_t pin);
+extern GPIO_AlternateFunction SIM_GPIO_GetAlt(GPIO_Port port, uint32_t pin);
 
 
 #ifdef __cplusplus
