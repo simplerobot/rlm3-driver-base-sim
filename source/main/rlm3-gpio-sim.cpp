@@ -152,11 +152,10 @@ void HAL_GPIO_WritePin(GPIO_Port port, uint32_t pin, GPIO_PinState state)
 	ValidatePins(port, pin);
 	ASSERT(state == GPIO_PIN_SET || state == GPIO_PIN_RESET);
 
-	// Make sure this pin is actually enabled for output.
+	// Make sure this pin is available.  The pin can be written as long as it is not in input mode.
 	GPIO_Port_State& port_state = g_port_states[port];
 	ASSERT(port_state.clock_enabled == true);
-	ASSERT((pin & ~port_state.enabled_pins) == 0);
-	ASSERT((pin & ~port_state.output_pins) == 0);
+	ASSERT((pin & port_state.input_pins) == 0);
 
 	if (state == GPIO_PIN_SET)
 		port_state.pin_values |= pin;
@@ -168,11 +167,7 @@ extern bool SIM_GPIO_Read(GPIO_Port port, uint32_t pin)
 {
 	ValidatePin(port, pin);
 
-	// Make sure this pin is actually enabled.
 	GPIO_Port_State& port_state = g_port_states[port];
-	ASSERT(port_state.clock_enabled == true);
-	ASSERT((pin & ~port_state.enabled_pins) == 0);
-
 	return ((pin & port_state.pin_values) != 0);
 }
 
@@ -180,11 +175,7 @@ void SIM_GPIO_Write(GPIO_Port port, uint32_t pin, bool value)
 {
 	ValidatePins(port, pin);
 
-	// Make sure this pin is actually enabled.
 	GPIO_Port_State& port_state = g_port_states[port];
-	ASSERT(port_state.clock_enabled == true);
-	ASSERT((pin & ~port_state.enabled_pins) == 0);
-
 	if (value)
 		port_state.pin_values |= pin;
 	else
