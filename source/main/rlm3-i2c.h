@@ -25,9 +25,12 @@ extern bool RLM3_I2C1_Transmit(uint32_t addr, const uint8_t* data, size_t size);
 extern bool RLM3_I2C1_Receive(uint32_t addr, uint8_t* data, size_t size);
 extern bool RLM3_I2C1_TransmitReceive(uint32_t addr, const uint8_t* tx_data, size_t tx_size, uint8_t* rx_data, size_t rx_size);
 
-extern void RLM3_SIM_I2C1_Transmit(uint32_t addr, const uint8_t* data, size_t size);
-extern void RLM3_SIM_I2C1_Receive(uint32_t addr, const uint8_t* data, size_t size);
-extern bool RLM3_SIM_I2C1_TransmitReceive(uint32_t addr, const uint8_t* tx_data, size_t tx_size, const uint8_t* rx_data, size_t rx_size);
+extern void SIM_RLM3_I2C1_Transmit(uint32_t addr, const uint8_t* data, size_t size);
+extern void SIM_RLM3_I2C1_TransmitFailure(uint32_t addr, const uint8_t* data, size_t size);
+extern void SIM_RLM3_I2C1_Receive(uint32_t addr, const uint8_t* data, size_t size);
+extern void SIM_RLM3_I2C1_ReceiveFailure(uint32_t addr);
+extern void SIM_RLM3_I2C1_TransmitReceive(uint32_t addr, const uint8_t* tx_data, size_t tx_size, const uint8_t* rx_data, size_t rx_size);
+extern void SIM_RLM3_I2C1_TransmitReceiveFailure(uint32_t addr, const uint8_t* tx_data, size_t tx_size);
 
 #ifdef __cplusplus
 }

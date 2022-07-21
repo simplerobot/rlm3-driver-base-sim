@@ -1,7 +1,6 @@
 GITHUB_DEPS += simplerobot/build-scripts
 GITHUB_DEPS += simplerobot/test
 GITHUB_DEPS += simplerobot/logger
-GITHUB_DEPS += simplerobot/mock
 include ../build-scripts/build/release/include.make
 
 BUILD_DIR = build
