@@ -69,7 +69,7 @@ extern void RLM3_Take()
 	while (!g_is_task_active)
 	{
 		if (!SIM_HasNextInterrupt())
-			FAIL("Test thread sleeping with no more interrupts available to wake it up.");
+			FAIL("Test thread sleeping with no more interrupts available to wake it up. (Make sure you are calling RLM3_Give or RLM3_GiveFromISR)");
 		g_current_time = SIM_GetNextInterruptTime();
 		SIM_RunNextInterrupt();
 	}

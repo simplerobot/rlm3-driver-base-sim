@@ -17,11 +17,13 @@ struct GPIO_Port_State
 	uint16_t enabled_pins;
 	uint16_t output_pins;
 	uint16_t input_pins;
+	uint16_t interrupt_pins;
 	uint16_t pin_values;
 	GPIO_Pin_Config pin_configs[16];
 };
 
 static GPIO_Port_State g_port_states[GPIO_COUNT];
+static uint16_t g_interrupt_pins = 0;
 
 
 static void ValidatePort(GPIO_Port port)
@@ -46,7 +48,7 @@ static void ValidateInit(GPIO_InitTypeDef* init)
 {
 	ASSERT(init != nullptr);
 	// We currently only support digital input and output pins.  NOT alternate functions.
-	ASSERT(init->Mode == GPIO_MODE_INPUT || init->Mode == GPIO_MODE_OUTPUT_PP || init->Mode == GPIO_MODE_OUTPUT_OD);
+	ASSERT(init->Mode == GPIO_MODE_INPUT || init->Mode == GPIO_MODE_IT_FALLING || init->Mode == GPIO_MODE_IT_RISING || init->Mode == GPIO_MODE_IT_RISING_FALLING || init->Mode == GPIO_MODE_OUTPUT_PP || init->Mode == GPIO_MODE_OUTPUT_OD);
 
 	ASSERT(init->Pull == GPIO_NOPULL || init->Pull == GPIO_PULLUP || init->Pull == GPIO_PULLDOWN);
 	ASSERT(init->Speed == GPIO_SPEED_FREQ_LOW || init->Speed == GPIO_SPEED_FREQ_MEDIUM || init->Speed == GPIO_SPEED_FREQ_HIGH || init->Speed == GPIO_SPEED_FREQ_VERY_HIGH);
@@ -83,10 +85,18 @@ extern void HAL_GPIO_Init(GPIO_Port port, GPIO_InitTypeDef* init)
 
 	// Enable these pins.
 	port_state.enabled_pins |= init->Pin;
-	if (init->Mode == GPIO_MODE_INPUT)
+	if (init->Mode == GPIO_MODE_INPUT || init->Mode == GPIO_MODE_IT_FALLING || init->Mode == GPIO_MODE_IT_RISING || init->Mode == GPIO_MODE_IT_RISING_FALLING)
 		port_state.input_pins |= init->Pin;
 	else
 		port_state.output_pins |= init->Pin;
+
+	if (init->Mode == GPIO_MODE_IT_FALLING || init->Mode == GPIO_MODE_IT_RISING || init->Mode == GPIO_MODE_IT_RISING_FALLING)
+	{
+		// Only one pin between all the ports can have interrupt mode enabled.
+		ASSERT((g_interrupt_pins & init->Pin) == 0);
+		port_state.interrupt_pins |= init->Pin;
+		g_interrupt_pins |= init->Pin;
+	}
 
 	// Save the configuration for each affected pin.
 	for (size_t pin_index = 0; pin_index < 16; pin_index++)
@@ -112,10 +122,14 @@ extern void HAL_GPIO_DeInit(GPIO_Port port, uint32_t pin)
 	ASSERT(port_state.clock_enabled == true);
 	ASSERT((pin & ~port_state.enabled_pins) == 0);
 
+	// Clear any global interrupt pins set by these pins.
+	g_interrupt_pins &= ~(port_state.interrupt_pins & pin);
+
 	// Clear all the enabled bits for these pins.
 	port_state.enabled_pins &= ~pin;
 	port_state.output_pins &= ~pin;
 	port_state.input_pins &= ~pin;
+	port_state.interrupt_pins &= ~pin;
 
 	// Reset the pin state.
 	for (size_t pin_index = 0; pin_index < 16; pin_index++)
@@ -243,14 +257,42 @@ extern GPIO_AlternateFunction SIM_GPIO_GetAlt(GPIO_Port port, uint32_t pin)
 	return GPIO_AF_DISABLED;
 }
 
+extern void SIM_GPIO_Interrupt(GPIO_Port port, uint32_t pin)
+{
+	ValidatePin(port, pin);
+
+	SIM_AddInterrupt([=]() {
+		GPIO_Port_State& port_state = g_port_states[port];
+		ASSERT(port_state.clock_enabled);
+		ASSERT((port_state.interrupt_pins & pin) != 0);
+		switch (pin)
+		{
+		case GPIO_PIN_12:
+			RLM3_EXTI12_Callback();
+			break;
+		default:
+			// We do not support interrupts on this pin.
+			ASSERT(false);
+			break;
+		}
+	});
+}
+
+extern __attribute((weak)) void RLM3_EXTI12_Callback()
+{
+}
+
+
 TEST_SETUP(SIM_GPIO_INIT)
 {
+	g_interrupt_pins = 0;
 	for (auto& port : g_port_states)
 	{
 		port.clock_enabled = false;
 		port.enabled_pins = 0;
 		port.output_pins = 0;
 		port.input_pins = 0;
+		port.interrupt_pins = 0;
 		port.pin_values = 0;
 		for (auto& pin : port.pin_configs)
 		{

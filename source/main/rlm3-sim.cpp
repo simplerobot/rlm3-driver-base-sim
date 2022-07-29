@@ -61,10 +61,20 @@ extern void SIM_RunNextInterrupt()
 	ASSERT(!SIM_RLM3_Is_IRQ());
 	ASSERT(!g_sim_interrupt_queue.empty());
 	g_last_interrupt_time = RLM3_GetCurrentTime();
-	g_is_in_interrupt_handler = true;
-	g_sim_interrupt_queue.front().handler();
-	g_sim_interrupt_queue.pop();
-	g_is_in_interrupt_handler = false;
+
+	try
+	{
+		g_is_in_interrupt_handler = true;
+		g_sim_interrupt_queue.front().handler();
+		g_sim_interrupt_queue.pop();
+		g_is_in_interrupt_handler = false;
+	}
+	catch (...)
+	{
+		g_sim_interrupt_queue.pop();
+		g_is_in_interrupt_handler = false;
+		throw;
+	}
 }
 
 

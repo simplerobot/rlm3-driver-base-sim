@@ -247,6 +247,9 @@ extern void GPIO_CLOCK_DISABLE(GPIO_Port port);
 #define __HAL_RCC_GPIOK_CLK_DISABLE() GPIO_CLOCK_DISABLE(GPIOK)
 
 
+extern void RLM3_EXTI12_Callback();
+
+
 extern bool SIM_GPIO_IsClockEnabled(GPIO_Port port);
 extern bool SIM_GPIO_IsEnabled(GPIO_Port port, uint32_t pin);
 extern GPIO_Mode SIM_GPIO_GetMode(GPIO_Port port, uint32_t pin);
@@ -255,6 +258,7 @@ extern GPIO_Speed SIM_GPIO_GetSpeed(GPIO_Port port, uint32_t pin);
 extern GPIO_AlternateFunction SIM_GPIO_GetAlt(GPIO_Port port, uint32_t pin);
 extern void SIM_GPIO_Write(GPIO_Port port, uint32_t pin, bool value);
 extern bool SIM_GPIO_Read(GPIO_Port port, uint32_t pin);
+extern void SIM_GPIO_Interrupt(GPIO_Port port, uint32_t pin);
 
 
 #ifdef __cplusplus
