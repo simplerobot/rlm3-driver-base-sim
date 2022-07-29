@@ -63,13 +63,18 @@ extern void RLM3_GiveFromISR(RLM3_Task task)
 	g_is_task_active = true;
 }
 
+extern void SIM_Give()
+{
+	g_is_task_active = true;
+}
+
 extern void RLM3_Take()
 {
 	ASSERT(!SIM_RLM3_Is_IRQ());
 	while (!g_is_task_active)
 	{
 		if (!SIM_HasNextInterrupt())
-			FAIL("Test thread sleeping with no more interrupts available to wake it up. (Make sure you are calling RLM3_Give or RLM3_GiveFromISR)");
+			FAIL("Test thread sleeping with no more interrupts available to wake it up. (Make sure you are calling RLM3_Give or RLM3_GiveFromISR or SIM_Give)");
 		g_current_time = SIM_GetNextInterruptTime();
 		SIM_RunNextInterrupt();
 	}

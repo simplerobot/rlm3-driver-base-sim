@@ -23,6 +23,8 @@ extern void RLM3_Take();
 extern bool RLM3_TakeWithTimeout(RLM3_Time timeout_ms);
 extern bool RLM3_TakeUntil(RLM3_Time start_time, RLM3_Time delay_ms);
 
+extern void SIM_Give();
+
 
 #ifdef __cplusplus
 }

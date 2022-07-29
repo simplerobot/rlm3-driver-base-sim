@@ -66,3 +66,22 @@ TEST_CASE(RLM3_TakeWithTimeout_Delayed)
 	RLM3_TakeWithTimeout(30);
 	ASSERT(RLM3_GetCurrentTime() == 20);
 }
+
+TEST_CASE(SIM_Give_HappyCase)
+{
+	SIM_Give();
+
+	RLM3_Take();
+}
+
+TEST_CASE(SIM_Give_Delayed)
+{
+	SIM_AddDelay(5);
+	SIM_AddInterrupt([&]() { });
+	SIM_AddDelay(15);
+	SIM_AddInterrupt([&]() { SIM_Give(); });
+
+	RLM3_Take();
+	ASSERT(RLM3_GetCurrentTime() == 20);
+}
+
