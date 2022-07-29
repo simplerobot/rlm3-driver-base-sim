@@ -95,3 +95,28 @@ TEST_CASE(UART_TransmitReceiveError_HappyCase)
 	ASSERT(RLM3_GetCurrentTime() == 22 + 15);
 }
 
+TEST_CASE(UART_TransmitReceiveRawError_HappyCase)
+{
+	SIM_RLM3_UART2_TransmitRaw((const uint8_t*)"GET /\r\n", 7);
+	SIM_AddDelay(10);
+	SIM_RLM3_UART2_ReceiveRaw((const uint8_t*)"HTTP/1.0 200 OK\r\n", 17);
+	SIM_AddDelay(5);
+	SIM_RLM3_UART2_Error(125);
+
+	RLM3_Delay(22);
+	RLM3_UART2_Init(115200);
+	g_transmit = "GET /\r\n";
+	g_receive = "HTTP/1.0 200 OK\r\n";
+	g_error = 125;
+	RLM3_UART2_EnsureTransmit();
+	while (g_transmit != nullptr)
+		RLM3_Take();
+	ASSERT(RLM3_GetCurrentTime() == 22 + 0);
+	while (g_receive != nullptr)
+		RLM3_Take();
+	ASSERT(RLM3_GetCurrentTime() == 22 + 10);
+	while (g_error != 0)
+		RLM3_Take();
+	ASSERT(RLM3_GetCurrentTime() == 22 + 15);
+}
+

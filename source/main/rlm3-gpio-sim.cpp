@@ -280,6 +280,8 @@ extern void SIM_GPIO_Interrupt(GPIO_Port port, uint32_t pin)
 
 extern __attribute((weak)) void RLM3_EXTI12_Callback()
 {
+	// DO NOT MODIFIY THIS FUNCTION.  Override it by declaring a non-weak version in your project files.
+	ASSERT(false);
 }
 
 

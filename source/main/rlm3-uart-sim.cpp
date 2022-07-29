@@ -57,9 +57,8 @@ static uint32_t UART_GetBaudrate(UartInfo& uart_info)
 	return uart_info.baud_rate;
 }
 
-extern void UART_Transmit(UartInfo& u, const char* s)
+static void UART_Transmit(UartInfo& u, const std::string& str)
 {
-	std::string str(s);
 	UartInfo* uart_info = &u;
 	SIM_AddInterrupt([=]() {
 		ASSERT(uart_info->is_active);
@@ -77,15 +76,34 @@ extern void UART_Transmit(UartInfo& u, const char* s)
 	});
 }
 
-extern void UART_Receive(UartInfo& u, const char* s)
+static void UART_Receive(UartInfo& u, const std::string& str)
 {
-	std::string str(s);
 	UartInfo* uart_info = &u;
 	SIM_AddInterrupt([=]() {
 		ASSERT(uart_info->is_active);
 		for (char c : str)
 			uart_info->ReceiveCallback(c);
 	});
+}
+
+static void UART_Transmit(UartInfo& u, const char* s)
+{
+	UART_Transmit(u, std::string(s));
+}
+
+static void UART_Receive(UartInfo& u, const char* s)
+{
+	UART_Receive(u, std::string(s));
+}
+
+static void UART_Transmit(UartInfo& u, const uint8_t* data, size_t size)
+{
+	UART_Transmit(u, std::string(data, data + size));
+}
+
+static void UART_Receive(UartInfo& u, const uint8_t* data, size_t size)
+{
+	UART_Receive(u, std::string(data, data + size));
 }
 
 extern void UART_Error(UartInfo& u, uint32_t status_flags)
@@ -132,6 +150,16 @@ extern void SIM_RLM3_UART2_Receive(const char* str)
 	UART_Receive(UART2, str);
 }
 
+extern void SIM_RLM3_UART2_TransmitRaw(const uint8_t* data, size_t size)
+{
+	UART_Transmit(UART2, data, size);
+}
+
+extern void SIM_RLM3_UART2_ReceiveRaw(const uint8_t* data, size_t size)
+{
+	UART_Receive(UART2, data, size);
+}
+
 extern void SIM_RLM3_UART2_Error(uint32_t status_flags)
 {
 	UART_Error(UART2, status_flags);
@@ -170,6 +198,16 @@ extern void SIM_RLM3_UART4_Transmit(const char* str)
 extern void SIM_RLM3_UART4_Receive(const char* str)
 {
 	UART_Receive(UART4, str);
+}
+
+extern void SIM_RLM3_UART4_TransmitRaw(const uint8_t* data, size_t size)
+{
+	UART_Transmit(UART4, data, size);
+}
+
+extern void SIM_RLM3_UART4_ReceiveRaw(const uint8_t* data, size_t size)
+{
+	UART_Receive(UART4, data, size);
 }
 
 extern void SIM_RLM3_UART4_Error(uint32_t status_flags)
