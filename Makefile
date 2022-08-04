@@ -13,7 +13,7 @@ MAIN_SOURCE_DIR = $(SOURCE_DIR)/main
 TEST_SOURCE_DIR = $(SOURCE_DIR)/test
 
 CC = g++
-CFLAGS = -Wall -Werror -DTEST -fsanitize=address -static-libasan -g -Og
+CFLAGS = -Wall -Werror -DTEST -fsanitize=address -static-libasan -g -Og -fnon-call-exceptions
 
 LIBRARY_FILES = $(notdir $(wildcard $(MAIN_SOURCE_DIR)/*))
 
