@@ -46,6 +46,11 @@ extern uint8_t* SIM_MEMORY_GetBaseAddress()
 	return g_memory + RLM3_EXTERNAL_MEMORY_SIZE;
 }
 
+extern "C" const char *__asan_default_options()
+{
+	return "handle_segv=0";
+}
+
 static void signal_handler(int sig, siginfo_t *info, void *ucontext)
 {
 	uint8_t* addr = (uint8_t*) info->si_addr;
@@ -73,6 +78,14 @@ TEST_START(MEMORY_SETUP)
 {
 	if (g_memory == NULL)
 	{
+		struct sigaction action = {};
+		action.sa_sigaction = signal_handler;
+		action.sa_flags = SA_SIGINFO | SA_NODEFER;
+		int result = ::sigaction(SIGSEGV, &action, nullptr);
+		if (result != 0)
+			std::printf("sigaction failed: errno: %d (%s)\n", errno, strerror(errno));
+		ASSERT(result == 0);
+
 		long int page_size = ::sysconf(_SC_PAGE_SIZE);
 		ASSERT(RLM3_EXTERNAL_MEMORY_SIZE % page_size == 0);
 		void* memory = ::mmap(nullptr, 3 * RLM3_EXTERNAL_MEMORY_SIZE, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
@@ -80,10 +93,6 @@ TEST_START(MEMORY_SETUP)
 			std::printf("Memory: %p  errno: %d (%s)\n", memory, errno, strerror(errno));
 		ASSERT(memory != MAP_FAILED);
 		g_memory = (uint8_t*)memory;
-		struct sigaction action = {};
-		action.sa_sigaction = signal_handler;
-		action.sa_flags = SA_SIGINFO | SA_NODEFER;
-		::sigaction(SIGSEGV, &action, nullptr);
 	}
 	if (g_is_initialized)
 		RLM3_MEMORY_Deinit();
