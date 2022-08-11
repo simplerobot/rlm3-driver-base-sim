@@ -2,6 +2,7 @@
 #include "rlm3-sim.hpp"
 #include "Test.hpp"
 #include "logger.h"
+#include <sstream>
 
 
 LOGGER_ZONE(UART);
@@ -64,12 +65,22 @@ static void UART_Transmit(UartInfo& u, const std::string& str)
 		ASSERT(uart_info->is_active);
 		if (!uart_info->is_transmitting)
 			FAIL("%s transmit expected, but RLM3_%s_EnsureTransmit not called.", uart_info->name, uart_info->name);
-		for (char c : str)
+		for (size_t i = 0; i < str.length(); i++)
 		{
-			uint8_t expected = c;
+			uint8_t expected = str[i];
 			uint8_t transmit_callback_value = 0;
-			ASSERT(uart_info->TransmitCallback(&transmit_callback_value));
-			ASSERT(transmit_callback_value == expected);
+			if (!uart_info->TransmitCallback(&transmit_callback_value))
+				FAIL("%s transmit expected '%s' but only got %zd characters.", uart_info->name, SIM_SafeString(str).c_str(), i);
+			if (transmit_callback_value != expected)
+			{
+				std::ostringstream full_actual;
+				for (size_t j = 0; j < i; j++)
+					full_actual.put(str[j]);
+				full_actual.put(transmit_callback_value);
+				while (uart_info->TransmitCallback(&transmit_callback_value) && std::isprint(transmit_callback_value))
+					full_actual.put(transmit_callback_value);
+				FAIL("%s transmit expected '%s' but got '%s'.", uart_info->name, SIM_SafeString(str).c_str(), SIM_SafeString(full_actual.str()).c_str());
+			}
 		}
 		uint8_t transmit_callback_value = 0;
 		ASSERT(!uart_info->TransmitCallback(&transmit_callback_value));

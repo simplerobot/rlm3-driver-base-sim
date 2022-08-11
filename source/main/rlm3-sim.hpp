@@ -12,6 +12,7 @@
 #endif
 
 #include <functional>
+#include <string>
 
 
 extern bool SIM_RLM3_Is_IRQ();
@@ -23,5 +24,6 @@ extern bool SIM_HasNextInterrupt();
 extern RLM3_Time SIM_GetNextInterruptTime();
 extern void SIM_RunNextInterrupt();
 
+extern std::string SIM_SafeString(const std::string& input);
 
 

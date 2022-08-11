@@ -39,3 +39,11 @@ TEST_CASE(SIM_GetNextInterruptTime_HappyCase)
 	ASSERT(SIM_GetNextInterruptTime() == 10);
 	SIM_RunNextInterrupt();
 }
+
+TEST_CASE(SafeString_HappyCase)
+{
+	std::string test = SIM_SafeString("\\\r\n\x1F ABCabc123~\x7f\xAB");
+
+	ASSERT(test == "\\\\\\r\\n\\x1F ABCabc123~\\x7F\\xAB");
+}
+
