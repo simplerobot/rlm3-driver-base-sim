@@ -56,6 +56,21 @@ extern RLM3_Time SIM_GetNextInterruptTime()
 	return std::max(current_time, target_time);
 }
 
+extern void SIM_DoInterrupt(std::function<void()> interrupt)
+{
+	try
+	{
+		g_is_in_interrupt_handler = true;
+		interrupt();
+		g_is_in_interrupt_handler = false;
+	}
+	catch (...)
+	{
+		g_is_in_interrupt_handler = false;
+		throw;
+	}
+}
+
 extern void SIM_RunNextInterrupt()
 {
 	ASSERT(!SIM_RLM3_Is_IRQ());

@@ -19,6 +19,7 @@ extern bool SIM_RLM3_Is_IRQ();
 
 extern void SIM_AddInterrupt(std::function<void()> interrupt);
 extern void SIM_AddDelay(RLM3_Time delay);
+extern void SIM_DoInterrupt(std::function<void()> interrupt);
 
 extern bool SIM_HasNextInterrupt();
 extern RLM3_Time SIM_GetNextInterruptTime();
