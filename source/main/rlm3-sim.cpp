@@ -58,6 +58,9 @@ extern RLM3_Time SIM_GetNextInterruptTime()
 
 extern void SIM_DoInterrupt(std::function<void()> interrupt)
 {
+	if (SIM_IsInCriticalSection())
+		FAIL("Trying to execute an interrupt while in a critical section.");
+
 	try
 	{
 		g_is_in_interrupt_handler = true;
@@ -69,6 +72,9 @@ extern void SIM_DoInterrupt(std::function<void()> interrupt)
 		g_is_in_interrupt_handler = false;
 		throw;
 	}
+
+	if (SIM_IsInCriticalSection())
+		FAIL("Interrupt handler finished while in a critical section.");
 }
 
 extern void SIM_RunNextInterrupt()
@@ -77,19 +83,9 @@ extern void SIM_RunNextInterrupt()
 	ASSERT(!g_sim_interrupt_queue.empty());
 	g_last_interrupt_time = RLM3_GetCurrentTime();
 
-	try
-	{
-		g_is_in_interrupt_handler = true;
-		g_sim_interrupt_queue.front().handler();
-		g_sim_interrupt_queue.pop();
-		g_is_in_interrupt_handler = false;
-	}
-	catch (...)
-	{
-		g_sim_interrupt_queue.pop();
-		g_is_in_interrupt_handler = false;
-		throw;
-	}
+	auto handler = g_sim_interrupt_queue.front().handler;
+	g_sim_interrupt_queue.pop();
+	SIM_DoInterrupt(handler);
 }
 
 

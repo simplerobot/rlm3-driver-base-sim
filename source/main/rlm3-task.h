@@ -23,7 +23,13 @@ extern void RLM3_Take();
 extern bool RLM3_TakeWithTimeout(RLM3_Time timeout_ms);
 extern bool RLM3_TakeUntil(RLM3_Time start_time, RLM3_Time delay_ms);
 
+extern void RLM3_EnterCritical();
+extern uint32_t RLM3_EnterCriticalFromISR();
+extern void RLM3_ExitCritical();
+extern void RLM3_ExitCriticalFromISR(uint32_t saved_level);
+
 extern void SIM_Give();
+extern bool SIM_IsInCriticalSection();
 
 
 #ifdef __cplusplus

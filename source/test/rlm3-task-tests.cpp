@@ -85,3 +85,121 @@ TEST_CASE(SIM_Give_Delayed)
 	ASSERT(RLM3_GetCurrentTime() == 20);
 }
 
+TEST_CASE(RLM3_EnterCritical_HappyCase)
+{
+	RLM3_EnterCritical();
+	RLM3_ExitCritical();
+}
+
+TEST_CASE(RLM3_EnterCritical_FailFromISR)
+{
+	auto test_fn = [] {
+		SIM_DoInterrupt([] {
+			RLM3_EnterCritical();
+			RLM3_ExitCritical();
+		});
+	};
+
+	TestCaseListItem test(test_fn, "test", __FILE__, __LINE__);
+	ASSERT(!test.Run());
+}
+
+TEST_CASE(RLM3_EnterCritical_InCriticalWhenISR)
+{
+	auto test_fn = [] {
+		RLM3_EnterCritical();
+		SIM_DoInterrupt([] {});
+		RLM3_ExitCritical();
+	};
+
+	TestCaseListItem test(test_fn, "test", __FILE__, __LINE__);
+	ASSERT(!test.Run());
+}
+
+TEST_CASE(RLM3_EnterCritical_NotExited)
+{
+	auto test_fn = [] {
+		RLM3_EnterCritical();
+	};
+
+	TestCaseListItem test(test_fn, "test", __FILE__, __LINE__);
+	ASSERT(!test.Run());
+}
+
+TEST_CASE(RLM3_EnterCritical_NotEntered)
+{
+	auto test_fn = [] {
+		RLM3_ExitCritical();
+	};
+
+	TestCaseListItem test(test_fn, "test", __FILE__, __LINE__);
+	ASSERT(!test.Run());
+}
+
+TEST_CASE(RLM3_EnterCritical_Delay)
+{
+	auto test_fn = [] {
+		RLM3_EnterCritical();
+		RLM3_Delay(1);
+		RLM3_ExitCritical();
+	};
+
+	TestCaseListItem test(test_fn, "test", __FILE__, __LINE__);
+	ASSERT(!test.Run());
+}
+
+TEST_CASE(RLM3_EnterCriticalFromISR_HappyCase)
+{
+	SIM_DoInterrupt([] {
+		uint32_t saved = RLM3_EnterCriticalFromISR();
+		RLM3_ExitCriticalFromISR(saved);
+	});
+}
+
+TEST_CASE(RLM3_EnterCriticalFromISR_NotFromISR)
+{
+	auto test_fn = [] {
+		uint32_t saved = RLM3_EnterCriticalFromISR();
+		RLM3_ExitCriticalFromISR(saved);
+	};
+
+	TestCaseListItem test(test_fn, "test", __FILE__, __LINE__);
+	ASSERT(!test.Run());
+}
+
+TEST_CASE(RLM3_EnterCriticalFromISR_NotExited)
+{
+	auto test_fn = [] {
+		SIM_DoInterrupt([] {
+			RLM3_EnterCriticalFromISR();
+		});
+	};
+
+	TestCaseListItem test(test_fn, "test", __FILE__, __LINE__);
+	ASSERT(!test.Run());
+}
+
+TEST_CASE(RLM3_EnterCriticalFromISR_NotEntered)
+{
+	auto test_fn = [] {
+		SIM_DoInterrupt([] {
+			RLM3_ExitCriticalFromISR(1013904223);
+		});
+	};
+
+	TestCaseListItem test(test_fn, "test", __FILE__, __LINE__);
+	ASSERT(!test.Run());
+}
+
+TEST_CASE(RLM3_EnterCriticalFromISR_WrongSavedValue)
+{
+	auto test_fn = [] {
+		SIM_DoInterrupt([] {
+			uint32_t saved = RLM3_EnterCriticalFromISR();
+			RLM3_ExitCriticalFromISR(saved + 1);
+		});
+	};
+
+	TestCaseListItem test(test_fn, "test", __FILE__, __LINE__);
+	ASSERT(!test.Run());
+}
