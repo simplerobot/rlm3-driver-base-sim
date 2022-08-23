@@ -15,6 +15,7 @@ LOGGER_ZONE(SIM_MEMORY);
 
 
 static bool g_is_initialized = false;
+static bool g_was_used = false;
 
 static uint8_t* g_memory = NULL; // A buffer allocated 3 times larger than needed.  The outside pages are marked as unreachable and the middle we control separately.
 
@@ -24,6 +25,7 @@ extern void RLM3_MEMORY_Init()
 	ASSERT(!g_is_initialized);
 	ASSERT(g_memory != NULL);
 	g_is_initialized = true;
+	g_was_used = true;
 	int mprotect_result = ::mprotect(g_memory + RLM3_EXTERNAL_MEMORY_SIZE, RLM3_EXTERNAL_MEMORY_SIZE, PROT_READ | PROT_WRITE);
 	ASSERT(mprotect_result == 0);
 }
@@ -93,6 +95,13 @@ TEST_START(MEMORY_SETUP)
 			std::printf("Memory: %p  errno: %d (%s)\n", memory, errno, strerror(errno));
 		ASSERT(memory != MAP_FAILED);
 		g_memory = (uint8_t*)memory;
+	}
+	if (g_was_used)
+	{
+		if (!g_is_initialized)
+			RLM3_MEMORY_Init();
+		std::memset(SIM_MEMORY_GetBaseAddress(), 0, RLM3_EXTERNAL_MEMORY_SIZE);
+
 	}
 	if (g_is_initialized)
 		RLM3_MEMORY_Deinit();
