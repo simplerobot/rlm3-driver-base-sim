@@ -9,6 +9,8 @@
 
 static const uint8_t g_default_device_id[12] = { 0x39, 0x00, 0x3d, 0x00, 0x11, 0x51, 0x36, 0x30, 0x34, 0x38, 0x37, 0x30 };
 static uint8_t g_device_id[12];
+static uint32_t g_device_short_id = 0;
+static bool g_has_short_id = false;
 
 static bool g_monitor_debug_output;
 static std::queue<uint8_t> g_expected_debug_output;
@@ -68,9 +70,27 @@ extern void RLM3_GetUniqueDeviceId(uint8_t id_out[12])
 	::memcpy(id_out, g_device_id, sizeof(g_device_id));
 }
 
+extern uint32_t RLM3_GetUniqueDeviceShortId()
+{
+	if (g_has_short_id)
+		return g_device_short_id;
+	uint8_t id[12];
+	RLM3_GetUniqueDeviceId(id);
+	uint32_t hash = 0;
+	for (uint8_t x : id)
+		hash = hash * 65599 + x;
+	return hash;
+}
+
 extern void SIM_SetUniqueDeviceId(const uint8_t id[12])
 {
 	::memcpy(g_device_id, id, sizeof(g_device_id));
+}
+
+extern void SIM_SetUniqueDeviceShortId(uint32_t id)
+{
+	g_device_short_id = id;
+	g_has_short_id = true;
 }
 
 extern std::string SIM_SafeString(const std::string& input)
@@ -112,6 +132,7 @@ extern std::string SIM_SafeString(const std::string& input)
 TEST_SETUP(SIM_BASE)
 {
 	::memcpy(g_device_id, g_default_device_id, sizeof(g_device_id));
+	g_has_short_id = false;
 	g_monitor_debug_output = false;
 	while (!g_expected_debug_output.empty())
 		g_expected_debug_output.pop();

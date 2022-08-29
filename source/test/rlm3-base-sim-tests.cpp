@@ -1,5 +1,6 @@
 #include "Test.hpp"
 #include "rlm3-base.h"
+#include <random>
 
 
 TEST_CASE(GetUniqueDeviceId_HappyCase)
@@ -19,6 +20,47 @@ TEST_CASE(SetUniqueDeviceId_HappyCase)
 	RLM3_GetUniqueDeviceId(id_out);
 	for (size_t i = 0; i < 12; i++)
 		ASSERT(id_out[i] == i);
+}
+
+TEST_CASE(GetUniqueDeviceShortId_HappyCase)
+{
+	uint32_t id = RLM3_GetUniqueDeviceShortId();
+
+	ASSERT(id != 0);
+}
+
+TEST_CASE(GetUniqueDeviceShortId_Distribution)
+{
+	size_t distributions[8][16] = { 0 };
+	std::default_random_engine random;
+
+	for (size_t i = 0; i < 100000; i++)
+	{
+		uint8_t id_in[12];
+		for (size_t i = 0; i < 12; i++)
+			id_in[i] = random();
+		SIM_SetUniqueDeviceId(id_in);
+
+		uint32_t id = RLM3_GetUniqueDeviceShortId();
+
+		for (size_t j = 0; j < 8; j++)
+			distributions[j][(id >> (4 * j))&0x0F]++;
+	}
+
+	size_t min = 100000 / 16 * 9 / 10;
+	size_t max = 100000 / 16 * 11 / 10;
+	for (size_t i = 0; i < 8; i++)
+		for (size_t j = 0; j < 16; j++)
+			ASSERT(min < distributions[i][j] && distributions[i][j] < max);
+}
+
+TEST_CASE(GetUniqueDeviceShortId_Set)
+{
+	SIM_SetUniqueDeviceShortId(0x12345678);
+
+	uint32_t id = RLM3_GetUniqueDeviceShortId();
+
+	ASSERT(id == 0x12345678);
 }
 
 TEST_CASE(DebugOutput_HappyCase)
